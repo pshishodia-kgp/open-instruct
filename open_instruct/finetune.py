@@ -79,6 +79,7 @@ class FlatArguments:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """The name of this experiment"""
     run_name: Optional[str] = None
+    wandb_project_name: Optional[str] = "finetune"
     """A unique name of this run"""
     model_name_or_path: Optional[str] = field(
         default=None,
@@ -303,6 +304,10 @@ class FlatArguments:
     max_train_steps: Optional[int] = field(
         default=None,
         metadata={"help": "If set, overrides the number of training steps. Otherwise, num_train_epochs is used."},
+    )
+    sweep_ratio: Optional[float] = field(
+        default=100,
+        metadata={"help": "If set, stops the sweep at that many steps."},
     )
     seed: int = field(default=42, metadata={"help": "Random seed for initialization and dataset shuffling."})
     checkpointing_steps: Optional[str] = field(
@@ -837,7 +842,7 @@ def main(args: FlatArguments):
         if is_beaker_job():
             experiment_config.update(vars(beaker_config))
         accelerator.init_trackers(
-            "open_instruct_internal",
+            args.wandb_project_name,
             experiment_config,
             init_kwargs={
                 "wandb": {
@@ -860,7 +865,7 @@ def main(args: FlatArguments):
     logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
     logger.info(f"  Total optimization steps = {args.max_train_steps}")
     # Only show the progress bar once on each machine.
-    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process)
+    progress_bar = tqdm(range(min(args.max_train_steps, int(args.sweep_ratio * args.max_train_steps))), disable=not accelerator.is_local_main_process)
     completed_steps = 0
     starting_epoch = 0
 
@@ -1005,7 +1010,8 @@ def main(args: FlatArguments):
                             clean_last_n_checkpoints(args.output_dir, args.keep_last_n_checkpoints)
                         accelerator.wait_for_everyone()
 
-                if completed_steps >= args.max_train_steps:
+                # Note that we don't want scheduler to be affected with max_train_steps.
+                if completed_steps >= args.max_train_steps or (completed_steps >= args.sweep_ratio * args.max_train_steps):
                     break
 
         if checkpointing_steps == "epoch":
