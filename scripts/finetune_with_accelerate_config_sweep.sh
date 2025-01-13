@@ -8,9 +8,9 @@
 set -e
 
 # Check if exactly three arguments are provided
-if [ "$#" -ne 3 ]; then
-    echo "Usage: $0 <num_gpus> <config_file> <wandb_project_name>"
-    echo "Example: $0 2 path/to/config.yaml my_wandb_project"
+if [ "$#" -ne 4 ]; then
+    echo "Usage: $0 <num_gpus> <config_file> <wandb_project_name> <model_name>"
+    echo "Example: $0 2 path/to/config.yaml my_wandb_project <model_name>"
     exit 1
 fi
 
@@ -27,7 +27,7 @@ echo "Using config file: $CONFIG_FILE"
 echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
 
 # Define an array of learning rates to sweep over
-LEARNING_RATES="1e-6 5e-6 1e-5 5e-5 1e-4 5e-4 1e-3"
+LEARNING_RATES="5e-5 1e-4 5e-4 1e-3"
 
 for LR in $LEARNING_RATES; do
     echo "Running with learning rate: $LR"
@@ -44,6 +44,8 @@ for LR in $LEARNING_RATES; do
         "$CONFIG_FILE" \
         --learning_rate=$LR \
         --wandb_project_name=$WANDB_PROJECT_NAME \
-        --run_name="lr=$LR"
+        --run_name="lr=$LR" \
+        --model_name_or_path=$4 \
+        --tokenizer_name=$4
         #--report_to=tensorboard,wandb
 done

@@ -6,7 +6,7 @@ use_slow_tokenizer: false
 dataset_mixer:
     allenai/tulu-3-sft-mixture: 1.0
 preprocessing_num_workers: 128
-per_device_train_batch_size: 4 # note, this is set up for 8 GPUs
+per_device_train_batch_size: 8 # note, this is set up for 8 GPUs
 gradient_accumulation_steps: 2 # effective batch size 128 with 1 node
 learning_rate: 5.0e-06 # best LR so far
 max_seq_length: 2048
@@ -22,3 +22,6 @@ report_to:
   - wandb
 logging_steps: 1
 dataset_mix_dir: output/float_lm_1b
+trust_remote_code: true
+push_to_hub: false
+try_launch_beaker_eval_jobs: false

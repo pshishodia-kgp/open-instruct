@@ -52,6 +52,7 @@ from transformers import (
     get_scheduler,
 )
 
+from open_instruct.multiprecision_linear_layer import replace_linear_with_multiprecision
 from open_instruct.dataset_processor import CHAT_TEMPLATES
 from open_instruct.model_utils import push_folder_to_hub, save_with_accelerate
 from open_instruct.utils import (
@@ -341,7 +342,7 @@ class FlatArguments:
     load_balancing_weight: float = field(
         default=0.5,
         metadata={"help": "Weight for load balancing loss if applicable."},
-    )
+    )  
     push_to_hub: bool = True
     """Whether to upload the saved model to huggingface"""
     hf_entity: Optional[str] = None
@@ -560,12 +561,14 @@ def main(args: FlatArguments):
             args.config_name,
             revision=args.model_revision,
             trust_remote_code=args.trust_remote_code,
+            token=os.environ.get('HF_REPO_TOKEN'),
         )
     elif args.model_name_or_path:
         config = AutoConfig.from_pretrained(
             args.model_name_or_path,
             revision=args.model_revision,
             trust_remote_code=args.trust_remote_code,
+            token=os.environ.get('HF_REPO_TOKEN'),
         )
     else:
         raise ValueError(
@@ -586,6 +589,7 @@ def main(args: FlatArguments):
             revision=tokenizer_revision,
             trust_remote_code=args.trust_remote_code,
             use_fast=not args.use_slow_tokenizer,
+            token=os.environ.get('HF_REPO_TOKEN'),
         )
     elif args.model_name_or_path:
         tokenizer = AutoTokenizer.from_pretrained(
@@ -593,6 +597,7 @@ def main(args: FlatArguments):
             revision=tokenizer_revision,
             trust_remote_code=args.trust_remote_code,
             use_fast=not args.use_slow_tokenizer,
+            token=os.environ.get('HF_REPO_TOKEN'),
         )
     else:
         raise ValueError(
@@ -620,6 +625,7 @@ def main(args: FlatArguments):
                 device_map=device_map,
                 torch_dtype=torch.bfloat16,
                 attn_implementation="flash_attention_2" if args.use_flash_attn else "eager",
+                token=os.environ.get('HF_REPO_TOKEN'),
             )
         else:
             model = AutoModelForCausalLM.from_pretrained(
@@ -631,11 +637,24 @@ def main(args: FlatArguments):
                 low_cpu_mem_usage=args.low_cpu_mem_usage,
                 torch_dtype=torch.bfloat16,
                 attn_implementation="flash_attention_2" if args.use_flash_attn else "eager",
+                token=os.environ.get('HF_REPO_TOKEN'),
             )
     else:
         logger.info("Training new model from scratch")
         model = AutoModelForCausalLM.from_config(config)
 
+    print("=======REPLACING LINEAR LAYERS WITH MULTIPRECISION=======")
+    num_trilm_matrix_scales = -1
+    if 'spectra2-1b' in args.model_name_or_path:
+        num_trilm_matrix_scales = 2
+    elif 'spectra2-2b' in args.model_name_or_path:
+        num_trilm_matrix_scales = 4
+    elif 'spectra2-3b' in args.model_name_or_path:
+        num_trilm_matrix_scales = 8
+    else:
+        raise f"{args.model_name_or_path=} doesn't belong to spectra2 trilm models."
+    
+    replace_linear_with_multiprecision(model, num_trilm_matrix_scales)
     # no default pad token for llama!
     # here we add all special tokens again, because the default ones are not in the special_tokens_map
     if isinstance(tokenizer, LlamaTokenizer) or isinstance(tokenizer, LlamaTokenizerFast):

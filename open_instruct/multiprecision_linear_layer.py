@@ -12,7 +12,7 @@ def replace_linear_with_multiprecision(model: nn.Module, num_trilm_matrix_scales
     for name, layer in model.named_modules():
         # all linear layers except lm_head and embed_tokens. embed_tokens is of type Embedding.
         if  (not isinstance(layer, torch.nn.Linear)) or ('lm_head' in name):
-            pass
+            continue
         multiprecision_layer = MultiPrecisionLinearLayer(
             in_dims=layer.in_features,
             out_dims=layer.out_features,
@@ -29,8 +29,8 @@ def replace_linear_with_multiprecision(model: nn.Module, num_trilm_matrix_scales
 
 class MultiPrecisionLinearLayer(nn.Module):
     # TODO: Fix ⁠ num_trilm_matrix_scales ⁠ to mimick model parallelism (i.e. take row parallel and column parallel into account)
-    def _init_(self, in_dims: int, out_dims: int, bias: bool, device: torch.device, dtype: torch.dtype, linear_type: LinearLayerType, num_trilm_matrix_scales: int):
-        super()._init_()
+    def __init__(self, in_dims: int, out_dims: int, bias: bool, device: torch.device, dtype: torch.dtype, linear_type: LinearLayerType, num_trilm_matrix_scales: int):
+        super().__init__()
         self.typecast_to = torch.float32 # If you modify this, also modify optionally_ternarize_single_matrix() function in convert_olmo_to_hf_new.py
         self.linear_type = linear_type
         self.num_trilm_matrix_scales = num_trilm_matrix_scales
@@ -45,7 +45,7 @@ class MultiPrecisionLinearLayer(nn.Module):
         else:
             raise NotImplementedError
         self.linear = nn.Linear(in_dims, out_dims, bias=bias, device=device, dtype=dtype)
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def __call__(self, x: torch.Tensor) -> torch.Tensor:
         target_weight = self.linear.weight
         target_bias = self.linear.bias
         ######################
