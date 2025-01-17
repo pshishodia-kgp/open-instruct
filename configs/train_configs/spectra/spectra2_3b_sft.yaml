@@ -1,22 +1,21 @@
-model_name_or_path: SpectraSuite/TriLM_3.9B_Unpacked
+model_name_or_path: SpectraSuite/spectra2-1b-base
 model_revision: main
 use_flash_attn: true
-tokenizer_name: SpectraSuite/TriLM_3.9B_Unpacked
+tokenizer_name: SpectraSuite/spectra2-1b-base
 use_slow_tokenizer: false
 dataset_mixer:
     allenai/tulu-3-sft-mixture: 1.0
 preprocessing_num_workers: 128
-per_device_train_batch_size: 4 # note, this is set up for 8 GPUs
-gradient_accumulation_steps: 2 # effective batch size 128 with 1 node
-learning_rate: 5.0e-06 # best LR so far
+per_device_train_batch_size: 8 # note, this is set up for 8 GPUs
+gradient_accumulation_steps: 2 # effective batch size = 8 BS x 2 GradAccum x 4GPUs= 64
+learning_rate: 5.0e-5
 max_seq_length: 2048
 lr_scheduler_type: linear
-warmup_ratio: 0.01
+warmup_ratio: 0.03
 weight_decay: 0.0
 num_train_epochs: 1
-sweep_ratio: 0.02
 # max_train_steps: 10000
-output_dir: sweep/
+output_dir: spectra_2_1b/
 with_tracking: true
 report_to:
   - wandb
@@ -25,3 +24,4 @@ dataset_mix_dir: output/float_lm_1b
 trust_remote_code: true
 push_to_hub: false
 try_launch_beaker_eval_jobs: false
+wandb_project_name: spectra_2_1b_sft
