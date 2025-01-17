@@ -2,7 +2,7 @@
 
 # example usage
 # sh scripts/finetune_with_accelerate_config_sweep.sh 1 configs/train_configs/sft/default.yaml
-# sh scripts/finetune_with_accelerate_config_sweep.sh 8 configs/train_configs/sft/olmo_17_sft.yaml
+# sh scripts/finetune_with_accelerate_config_sweep.sh 4 configs/train_configs/spectra/sft_sweep.yaml trilm_test FlashLinear/spectra2-1b-base-latent
 
 # Exit immediately if a command exits with a non-zero status
 set -e
@@ -27,7 +27,7 @@ echo "Using config file: $CONFIG_FILE"
 echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
 
 # Define an array of learning rates to sweep over
-LEARNING_RATES="5e-5 1e-4 5e-4 1e-3"
+LEARNING_RATES="1e-4 5e-4 1e-5 5e-5 2e-5 8e-5"
 
 for LR in $LEARNING_RATES; do
     echo "Running with learning rate: $LR"

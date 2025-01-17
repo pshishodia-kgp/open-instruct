@@ -2,9 +2,12 @@
 
 # example usage
 # sh scripts/finetune_with_accelerate_config.sh 1 configs/train_configs/sft/default.yaml
-# sh scripts/finetune_with_accelerate_config.sh 8 configs/train_configs/sft/olmo_17_sft.yaml
+# sh scripts/finetune_with_accelerate_config.sh 4 configs/train_configs/spectra/open-instruct/configs/train_configs/spectra/spectra2_1b_sft.yaml
 
-# Check if exactly two arguments are provided
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+# Check if exactly three arguments are provided
 if [ "$#" -ne 2 ]; then
     echo "Usage: $0 <num_gpus> <config_file>"
     echo "Example: $0 2 path/to/config.yaml"
@@ -13,6 +16,7 @@ fi
 
 NUM_GPUS="$1"
 CONFIG_FILE="$2"
+WANDB_PROJECT_NAME="$3"
 
 # Generate CUDA_VISIBLE_DEVICES as a range from 0 to NUM_GPUS-1
 CUDA_VISIBLE_DEVICES=$(seq -s, 0 $((NUM_GPUS-1)))
@@ -31,5 +35,4 @@ accelerate launch \
     --use_deepspeed \
     --deepspeed_config_file configs/ds_configs/stage3_no_offloading_accelerate.conf \
     open_instruct/finetune.py \
-    "$2" #\
-    #--report_to=tensorboard,wandb
+    "$CONFIG_FILE"
